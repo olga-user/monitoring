@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Klerk Monitor</title>
+  <style>
+    #km-root {
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      box-sizing: border-box;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: block;
+      width: 100%;
+      padding: 1px 0;
+    }
+    #km-root *,
+    #km-root *::before,
+    #km-root *::after {
+      box-sizing: inherit;
+    }
+    #km-root .km-wrap {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    #km-root .km-card {
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    #km-root .km-title { margin: 0 0 12px; font-size: 24px; }
+    #km-root .km-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    #km-root button {
+      appearance: none;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.2;
+    }
+    #km-root .km-start { background: #22c55e; color: #052e16; }
+    #km-root .km-stop { background: #f97316; color: #431407; }
+    #km-root .km-run { background: #38bdf8; color: #082f49; }
+    #km-root .km-refresh { background: #a78bfa; color: #2e1065; }
+    #km-root .km-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px 16px;
+      margin-top: 8px;
+    }
+    #km-root .km-muted { color: #94a3b8; }
+    #km-root pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      max-height: 420px;
+      overflow: auto;
+      line-height: 1.35;
+      font-size: 13px;
+    }
+    #km-root .km-msg {
+      min-height: 20px;
+      color: #facc15;
+      margin-top: 8px;
+    }
+    #km-root .km-cfg {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    #km-root label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    #km-root input {
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 10px;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+    #km-root textarea {
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 10px;
+      background: #0b1220;
+      color: #e2e8f0;
+      min-height: 220px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    #km-root .km-compare-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    #km-root .km-compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    #km-root .km-col {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 260px;
+      max-height: 520px;
+      overflow: auto;
+      background: #0b1220;
+    }
+    #km-root .km-col-title {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    #km-root .km-item {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+      background: #0f172a;
+    }
+    #km-root .km-item a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    #km-root .km-item a:hover { text-decoration: underline; }
+    #km-root .km-empty {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    @media (max-width: 860px) {
+      #km-root .km-compare-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="km-root">
+  <div class="km-wrap">
+    <div class="km-card">
+      <h1 class="km-title">Klerk spam monitor</h1>
+      <div class="km-cfg">
+        <label>
+          API Base URL
+          <input id="apiBase" type="text" placeholder="http://127.0.0.1:8000" autocomplete="off" />
+        </label>
+        <label>
+          GROQ_API_KEY
+          <input id="groqKey" type="password" placeholder="gsk_..." autocomplete="off" />
+        </label>
+        <label>
+          BITRIX_WEBHOOK (опционально)
+          <input id="bitrixWebhook" type="password" placeholder="https://.../rest/..." autocomplete="off" />
+        </label>
+        <label>
+          BITRIX_CHAT_ID (опционально)
+          <input id="bitrixChatId" type="text" placeholder="chat123 или user456" autocomplete="off" />
+        </label>
+        <label>
+          Промпт для модели (должен содержать {text})
+          <textarea id="promptText" placeholder="Загрузка текущего промпта..."></textarea>
+        </label>
+      </div>
+      <div class="km-actions">
+        <button class="km-refresh" id="saveConfigBtn">Сохранить ключи</button>
+        <button class="km-refresh" id="savePromptBtn">Сохранить промпт</button>
+        <button class="km-start" id="startBtn">Старт фоном</button>
+        <button class="km-stop" id="stopBtn">Стоп</button>
+        <button class="km-run" id="runOnceBtn">Проверить один раз</button>
+        <button class="km-refresh" id="refreshBtn">Обновить статус</button>
+      </div>
+      <div class="km-status" id="status"></div>
+      <div class="km-msg" id="message"></div>
+    </div>
+
+    <div class="km-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+        <strong>Последние записи spam_log.txt</strong>
+        <button class="km-refresh" id="reloadLogBtn">Обновить лог</button>
+      </div>
+      <pre id="logBox">Загрузка...</pre>
+    </div>
+
+    <div class="km-card">
+      <div class="km-compare-head">
+        <strong>Сравнение классификации (текущий/последний цикл)</strong>
+        <button class="km-refresh" id="reloadCompareBtn">Обновить сравнение</button>
+      </div>
+      <div class="km-compare-grid">
+        <div class="km-col">
+          <h3 class="km-col-title" id="spamTitle">SPAM (0)</h3>
+          <div id="spamList" class="km-empty">Нет данных.</div>
+        </div>
+        <div class="km-col">
+          <h3 class="km-col-title" id="allTitle">Все проверенные (0)</h3>
+          <div id="allList" class="km-empty">Нет данных.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const messageEl = document.getElementById("message");
+    const logBox = document.getElementById("logBox");
+    const groqKeyEl = document.getElementById("groqKey");
+    const bitrixWebhookEl = document.getElementById("bitrixWebhook");
+    const bitrixChatIdEl = document.getElementById("bitrixChatId");
+    const promptTextEl = document.getElementById("promptText");
+    const apiBaseEl = document.getElementById("apiBase");
+    const spamTitleEl = document.getElementById("spamTitle");
+    const allTitleEl = document.getElementById("allTitle");
+    const spamListEl = document.getElementById("spamList");
+    const allListEl = document.getElementById("allList");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryApiBase = (urlParams.get("api") || "").trim();
+    const savedApiBase = (localStorage.getItem("km_api_base") || "").trim();
+    const defaultApiBase = window.location.origin;
+    let apiBase = queryApiBase || savedApiBase || defaultApiBase;
+    apiBaseEl.value = apiBase;
+
+    function fmtDate(ts) {
+      if (!ts) return "—";
+      return new Date(ts * 1000).toLocaleString();
+    }
+
+    function showMessage(text, isError = false) {
+      messageEl.textContent = text || "";
+      messageEl.style.color = isError ? "#fca5a5" : "#facc15";
+    }
+
+    function setApiBase(value) {
+      apiBase = (value || "").trim().replace(/\/+$/, "");
+      if (!apiBase) apiBase = defaultApiBase;
+      apiBaseEl.value = apiBase;
+      localStorage.setItem("km_api_base", apiBase);
+    }
+
+    async function api(path, opts = {}) {
+      const base = (apiBase || "").replace(/\/+$/, "");
+      const url = `${base}${path}`;
+      const res = await fetch(url, opts);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+      return data;
+    }
+
+    function renderStatus(s) {
+      statusEl.innerHTML = `
+        <div><span class="km-muted">Состояние:</span> <b>${s.running ? "RUNNING" : "STOPPED"}</b></div>
+        <div><span class="km-muted">Модель:</span> <b>${s.model}</b></div>
+        <div><span class="km-muted">Интервал:</span> <b>${s.interval_sec} сек</b></div>
+        <div><span class="km-muted">last_id:</span> <b>${s.last_id}</b></div>
+        <div><span class="km-muted">След. цикл №:</span> <b>${s.cycle_no}</b></div>
+        <div><span class="km-muted">Проверено:</span> <b>${s.total_checked}</b></div>
+        <div><span class="km-muted">Последний цикл:</span> <b>${fmtDate(s.last_cycle_at)}</b></div>
+        <div><span class="km-muted">Цикл сейчас:</span> <b>${s.cycle_running ? "в работе" : "ожидание"}</b></div>
+        <div><span class="km-muted">Старт цикла:</span> <b>${fmtDate(s.cycle_started_at)}</b></div>
+        <div><span class="km-muted">Прогресс:</span> <b>${s.current_done || 0}/${s.current_total || 0}</b></div>
+        <div><span class="km-muted">Текущий id:</span> <b>${s.current_comment_id || "—"}</b></div>
+        <div><span class="km-muted">GROQ ключ:</span> <b>${s.has_groq_key ? "есть" : "нет"}</b></div>
+        <div><span class="km-muted">Bitrix:</span> <b>${s.has_bitrix ? "настроен" : "не настроен"}</b></div>
+        <div><span class="km-muted">Ошибка:</span> <b>${s.last_error || "—"}</b></div>
+      `;
+    }
+
+    async function loadConfigState() {
+      try {
+        const data = await api("/api/config");
+        if (data.config.groq_key_masked) groqKeyEl.placeholder = "Сохранен (скрыт)";
+        if (data.config.bitrix_webhook_masked) bitrixWebhookEl.placeholder = "Сохранен (скрыт)";
+        if (data.config.bitrix_chat_id) bitrixChatIdEl.value = data.config.bitrix_chat_id;
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    }
+
+    async function loadPrompt() {
+      try {
+        const data = await api("/api/prompt");
+        promptTextEl.value = data.prompt || "";
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    }
+
+    async function refreshStatus() {
+      try {
+        const data = await api("/api/status");
+        renderStatus(data.status);
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    }
+
+    async function refreshLog() {
+      try {
+        const data = await api("/api/spam-log?limit=300");
+        logBox.textContent = data.text || "Лог пуст.";
+      } catch (e) {
+        logBox.textContent = "Ошибка загрузки лога: " + e.message;
+      }
+    }
+
+    function esc(v) {
+      return String(v || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderRows(el, rows) {
+      if (!rows.length) {
+        el.className = "km-empty";
+        el.textContent = "Нет данных.";
+        return;
+      }
+      el.className = "";
+      el.innerHTML = rows.map((r) => `
+        <div class="km-item">
+          <div><b>#${esc(r.id)}</b></div>
+          <div>${esc(r.text)}</div>
+          <div style="margin-top:6px;">
+            ${r.comment_url ? `<a href="${esc(r.comment_url)}" target="_blank" rel="noopener noreferrer">Открыть комментарий</a>` : "<span class='km-muted'>Комментарий: ссылка недоступна</span>"}
+            ${r.article_url ? ` &middot; <a href="${esc(r.article_url)}" target="_blank" rel="noopener noreferrer">Статья</a>` : ""}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function refreshCompare() {
+      try {
+        const data = await api("/api/comments-view");
+        const payload = data.data || {};
+        const spamRows = payload.spam_rows || [];
+        const allRows = payload.rows || [];
+        spamTitleEl.textContent = `SPAM (${payload.spam_total || 0})`;
+        allTitleEl.textContent = `Все проверенные (${payload.total || 0})`;
+        renderRows(spamListEl, spamRows);
+        renderRows(allListEl, allRows);
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    }
+
+    document.getElementById("startBtn").addEventListener("click", async () => {
+      try {
+        await api("/api/start", { method: "POST" });
+        showMessage("Фоновый мониторинг запущен.");
+        await refreshStatus();
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    document.getElementById("saveConfigBtn").addEventListener("click", async () => {
+      try {
+        const payload = {
+          groq_api_key: groqKeyEl.value.trim(),
+          bitrix_webhook: bitrixWebhookEl.value.trim(),
+          bitrix_chat_id: bitrixChatIdEl.value.trim(),
+        };
+        const data = await api("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        groqKeyEl.value = "";
+        bitrixWebhookEl.value = "";
+        showMessage("Конфиг сохранен: " + (data.saved_keys.join(", ") || "без изменений"));
+        await refreshStatus();
+        await loadConfigState();
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    document.getElementById("savePromptBtn").addEventListener("click", async () => {
+      try {
+        const prompt = promptTextEl.value;
+        await api("/api/prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        showMessage("Промпт сохранен.");
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    document.getElementById("stopBtn").addEventListener("click", async () => {
+      try {
+        await api("/api/stop", { method: "POST" });
+        showMessage("Мониторинг остановлен.");
+        await refreshStatus();
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    document.getElementById("runOnceBtn").addEventListener("click", async () => {
+      try {
+        const data = await api("/api/run-once", { method: "POST" });
+        showMessage(`Готово. Проверено за цикл: ${data.result.checked_now}`);
+        await refreshStatus();
+        await refreshLog();
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", async () => {
+      await refreshStatus();
+      showMessage("Статус обновлён.");
+    });
+
+    document.getElementById("reloadLogBtn").addEventListener("click", refreshLog);
+    document.getElementById("reloadCompareBtn").addEventListener("click", refreshCompare);
+    apiBaseEl.addEventListener("change", async () => {
+      try {
+        setApiBase(apiBaseEl.value);
+        showMessage("API Base сохранен.");
+        await refreshStatus();
+        await loadConfigState();
+        await loadPrompt();
+        await refreshLog();
+        await refreshCompare();
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+
+    setApiBase(apiBase);
+    refreshStatus();
+    loadConfigState();
+    loadPrompt();
+    refreshLog();
+    refreshCompare();
+    setInterval(refreshStatus, 5000);
+    setInterval(refreshLog, 15000);
+    setInterval(refreshCompare, 5000);
+  </script>
+</body>
+</html>
