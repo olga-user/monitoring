@@ -3,14 +3,13 @@ name: Klerk spam monitor
 on:
   workflow_dispatch:
   schedule:
-    # Каждые 30 минут
     - cron: "*/30 * * * *"
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # нужно чтобы коммитить seen_ids.json обратно
+      contents: write
     concurrency:
       group: klerk-monitor
       cancel-in-progress: false
